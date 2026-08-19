@@ -1,0 +1,21 @@
+<?php
+
+/**
+ * @see Mage_Catalog_Block_Product_View
+ * @var Mage_Catalog_Block_Product_View $this
+ *
+ * Simple Configurable rewrite of catalog/product/view/options/wrapper.phtml.
+ * Adds an ajax "please wait" indicator and a placeholder container that the
+ * Simple Configurable JS swaps in ajax-loaded custom options HTML for the
+ * currently selected associated product.
+ */
+?>
+<div class="product-options" id="product-options-wrapper">
+    <?php echo $this->getChildHtml('', true, true);?>
+    <span style="display:none;" class="scp-please-wait"><img src="<?php echo $this->getSkinUrl('images/simpleconfigurable/ajax-loader.gif') ?>" class="v-middle" alt="" /> &nbsp; <?php echo $this->__('Loading...') ?> &nbsp;</span>
+    <div id="SCPcustomOptionsDiv"></div>
+    <?php if ($this->hasRequiredOptions()):?>
+        <p class="required"><?php echo $this->__('* Required Fields') ?></p>
+    <?php endif ?>
+</div>
+<script type="text/javascript">decorateGeneric($$('#product-options-wrapper dl'), ['last']);</script>

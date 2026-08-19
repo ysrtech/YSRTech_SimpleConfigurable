@@ -1,0 +1,36 @@
+<?php
+/**
+ * @see Mage_Catalog_Block_Product_View_Options
+ * @var Mage_Catalog_Block_Product_View_Options $this
+ *
+ * Simple Configurable rewrite of the ajax custom-options response template
+ * (scp_ajax_co layout handle / AjaxController::coAction()). Renders custom
+ * options for the currently-selected associated (child) product, instantiating
+ * a fresh Product.Options instance in global scope (the Product.Options class
+ * itself is defined once on the main product page by options.phtml, and is
+ * still available here since this is loaded into the same page via ajax).
+ */
+?>
+<script type="text/javascript">
+    //<![CDATA[
+    try { window.opConfig = new Product.Options(<?php echo $this->getJsonConfig() ?>); } catch(e) {}
+    $('product_addtocart_form').encoding = 'multipart/form-data';
+    //]]>
+</script>
+<?php if (count($this->getOptions())): ?>
+<dl>
+<?php $_options = Mage::helper('core')->decorateArray($this->getOptions()) ?>
+<?php foreach($_options as $_option): ?>
+    <?php echo $this->getOptionHtml($_option) ?>
+<?php endforeach; ?>
+</dl>
+
+<script type="text/javascript">
+    $$('#product-options-wrapper dl').each(function(label) {
+        label.removeClassName('last');
+    });
+    $$('#SCPcustomOptionsDiv dl').each(function(label) {
+        label.addClassName('last');
+    });
+</script>
+<?php endif; ?>

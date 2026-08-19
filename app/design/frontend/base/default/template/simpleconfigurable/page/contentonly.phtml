@@ -1,0 +1,8 @@
+<?php
+/**
+ * Simple Configurable rewrite of page/contentonly.phtml.
+ * Used as the root template for ajax responses (custom options / gallery image)
+ * so that only the inner "content" block's HTML is returned, without the
+ * surrounding page chrome (header/footer/etc).
+ */
+echo $this->getChildHtml('content');

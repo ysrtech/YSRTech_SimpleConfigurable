@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<config>
+    <acl>
+        <resources>
+            <admin>
+                <children>
+                    <system>
+                        <children>
+                            <config>
+                                <children>
+                                    <simpleconfigurable translate="title" module="ysrtech_simpleconfigurable">
+                                        <title>Simple Configurable Section</title>
+                                        <sort_order>100</sort_order>
+                                    </simpleconfigurable>
+                                </children>
+                            </config>
+                        </children>
+                    </system>
+                </children>
+            </admin>
+        </resources>
+    </acl>
+</config>

@@ -1,0 +1,57 @@
+<?php
+/**
+ * @see Mage_Sales_Block_Reorder_Sidebar
+ * @var Mage_Sales_Block_Reorder_Sidebar $this
+ *
+ * Simple Configurable rewrite of sales/reorder/sidebar.phtml.
+ * Based on the current core template (including the formkey CSRF block); the
+ * only functional change is that the product name is no longer wrapped in an
+ * unconditional link to the product's URL, since core does not check the
+ * item's product visibility/existence before rendering that link here.
+ */
+?>
+<?php $_items = $this->getItems()?>
+<?php if($_items): ?>
+<div class="block block-reorder">
+    <div class="block-title">
+        <strong><span><?php echo $this->__('My Orders') ?></span></strong>
+    </div>
+    <form method="post" action="<?php echo $this->getFormActionUrl() ?>" id="reorder-validate-detail">
+        <?php echo $this->getBlockHtml('formkey'); ?>
+        <div class="block-content">
+            <p class="block-subtitle"><?php echo $this->__('Last Ordered Items') ?></p>
+            <ol id="cart-sidebar-reorder">
+            <?php $_showAddButtonFlag = false ?>
+            <?php foreach ($_items as $_item): ?>
+                <li class="item">
+                    <?php if ($this->isItemAvailableForReorder($_item)): ?>
+                        <?php $_showAddButtonFlag = true ?>
+                        <input type="checkbox" name="order_items[]" id="reorder-item-<?php echo $_item->getId() ?>" value="<?php echo $_item->getId() ?>" title="<?php echo Mage::helper('core')->quoteEscape($this->__('Add to Cart')) ?>" class="checkbox validate-one-required-by-name" />
+                        <script type="text/javascript">
+                        //<![CDATA[
+                            $('reorder-item-<?php echo $_item->getId() ?>').advaiceContainer = 'cart-sidebar-reorder-advice-container';
+                        //]]>
+                        </script>
+                    <?php endif ?>
+                    <p class="product-name"><?php echo $this->escapeHtml($_item->getName()) ?></p>
+                </li>
+            <?php endforeach ?>
+            </ol>
+            <script type="text/javascript">decorateList('cart-sidebar-reorder')</script>
+            <div id="cart-sidebar-reorder-advice-container"></div>
+            <div class="actions">
+                <?php if ($_showAddButtonFlag): ?>
+                    <button type="submit" title="<?php echo Mage::helper('core')->quoteEscape($this->__('Add to Cart')) ?>" class="button btn-cart"><span><span><?php echo $this->__('Add to Cart') ?></span></span></button>
+                <?php endif ?>
+                <a href="<?php echo $this->getUrl('customer/account') ?>"><?php echo $this->__('View All'); ?></a>
+            </div>
+        </div>
+    </form>
+</div>
+<?php echo $this->getPagerHtml(); ?>
+<script type="text/javascript">
+//<![CDATA[
+    var reorderFormDetail = new VarienForm('reorder-validate-detail');
+//]]>
+</script>
+<?php endif ?>
