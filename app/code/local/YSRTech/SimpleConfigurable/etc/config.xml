@@ -97,13 +97,23 @@
 
     <frontend>
         <routers>
-            <ysrtech_simpleconfigurable>
+            <!--
+                The node name here is the ROUTE name, and it must equal the frontName.
+                Mage_Core_Controller_Varien_Router_Standard::match() sets the request's route name
+                from getRouteByFrontName(), which returns this node name - so getFullActionName()
+                becomes "<node>_ajax_co". Naming the node anything but "scp" silently stops the
+                scp_ajax_* layout handles in simpleconfigurable.xml from ever matching, and the
+                ajax endpoints then return a FULL page (header, footer, their forms) instead of a
+                fragment. That HTML gets injected into #SCPcustomOptionsDiv inside the add-to-cart
+                form, dragging required-entry fields into it and blocking add to cart outright.
+            -->
+            <scp>
                 <use>standard</use>
                 <args>
                     <module>YSRTech_SimpleConfigurable</module>
                     <frontName>scp</frontName>
                 </args>
-            </ysrtech_simpleconfigurable>
+            </scp>
         </routers>
         <layout>
             <updates>

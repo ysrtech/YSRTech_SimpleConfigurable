@@ -11,6 +11,15 @@ Simple Configurable rewrite of simpleconfigurableproducts.xml.
                  cannot be guaranteed. Items of type "skin_js" load after all "js"
                  type items (see getCssJsHtml() in Mage_Page_Block_Html_Head), so we
                  use that to guarantee load order without needing a new JS library. -->
+            <!--
+                product_extension.js fades the ajax custom-options block with Effect.Fade, so
+                scriptaculous effects must be present. Core only adds it on themes that happen to
+                pull in the full scriptaculous set, and a theme without it throws
+                "Effect is not defined" the first time a selection is made.
+            -->
+            <action method="addJs" ifconfig="simpleconfigurable/general/enabled">
+                <script>scriptaculous/effects.js</script>
+            </action>
             <action method="addItem" ifconfig="simpleconfigurable/general/enabled">
                 <type>skin_js</type>
                 <name>js/simpleconfigurable/product_extension.js</name>

@@ -72,6 +72,30 @@ class YSRTech_SimpleConfigurable_Block_Catalog_Product_View_Type_Configurable ex
         }
         unset($attribute);
 
+        // The parent's own values, used whenever the JS resets to "nothing selected". Without
+        // them the update helpers read undefined off the config and write the string "undefined"
+        // into the page. Each is emitted only when its feature is on, matching $childProducts.
+        $parent = $this->getProduct();
+        if ($changeName) {
+            $config['productName'] = $parent->getName();
+        }
+        if ($changeDescription) {
+            $config['description'] = $parent->getDescription();
+        }
+        if ($changeShortDescription) {
+            $config['shortDescription'] = $parent->getShortDescription();
+        }
+        if ($changeAttributes) {
+            $config['productAttributes'] = $this->getLayout()
+                ->createBlock('catalog/product_view_attributes')
+                ->setProduct($parent)
+                ->setTemplate('catalog/product/view/attributes.phtml')
+                ->toHtml();
+        }
+        if ($changeImage) {
+            $config['imageUrl'] = (string) Mage::helper('catalog/image')->init($parent, 'image');
+        }
+
         $config['childProducts']          = $childProducts;
         $config['priceFromLabel']         = $this->__('Price From:');
         $config['ajaxBaseUrl']             = Mage::getUrl('scp/ajax/');
