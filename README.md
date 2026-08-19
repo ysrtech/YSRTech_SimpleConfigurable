@@ -1,4 +1,4 @@
-# Ysrtech_SimpleConfigurable
+# YSRTech_SimpleConfigurable
 
 An OpenMage / Magento 1 module that simplifies the configurable product buying experience by letting customers select options and add products to the cart via AJAX — without leaving the page they're on (category/list pages, related products, etc.).
 
@@ -26,8 +26,8 @@ This module depends on the following core modules:
 ## Installation
 
 1. Copy the contents of this repository into your OpenMage/Magento 1 root directory, preserving the folder structure:
-   - `app/code/local/Ysrtech/SimpleConfigurable`
-   - `app/etc/modules/Ysrtech_SimpleConfigurable.xml`
+   - `app/code/local/YSRTech/SimpleConfigurable`
+   - `app/etc/modules/YSRTech_SimpleConfigurable.xml`
    - `design/frontend/base/default/layout/simpleconfigurable.xml`
    - `design/frontend/base/default/template/simpleconfigurable/`
    - `skin/frontend/base/default/js/simpleconfigurable/`
@@ -37,7 +37,14 @@ This module depends on the following core modules:
    - Catalog Search Index
    - Product Price
    - Stock Status
+
+   Re-indexing is required, not optional: the price and stock-status indexer rewrites change
+   indexed values store-wide.
 4. Go to **System > Configuration > Catalog > Simple Configurable Config** to review the module settings.
+
+### Backing it out
+
+`simpleconfigurable/general/enabled` gates the product model, the configurable type/price models, the configurable view block and the cart-line-edit observer — but **not** the price indexer, the stock-status indexer, the catalog price rule resource or the product collection price joins. Those follow the module being active at all. To fully revert, set `<active>false</active>` in `app/etc/modules/YSRTech_SimpleConfigurable.xml` and re-index Product Price and Stock Status. Worth staging against a copy of production data first.
 
 ## Configuration
 
@@ -65,7 +72,35 @@ The module adds a **Simple Configurable Config** section under **System > Config
 - A dedicated frontend router (`scp`) exposes AJAX endpoints used to fetch a selected child product's custom options, main image, and full gallery on demand.
 - A JavaScript extension (`skin/frontend/base/default/js/simpleconfigurable/product_extension.js`) enhances Magento's `Product.Config` to resolve the matching (or cheapest in-scope) simple product for the current selection and refresh the page content accordingly.
 - Selected child products are added to the cart along with a reference to their configurable parent (`cpid`), which the cart item renderer uses to decide what to display.
+- Editing such a cart line re-opens the **parent** configurable rather than the child. This is done from an observer on `controller_action_predispatch_checkout_cart_configure` rather than by overriding `Mage_Checkout_CartController`: `Mage_Core_Controller_Varien_Action::preDispatch()` names that event after the route, not the controller class, so it fires whichever module ends up owning `checkout/cart`. A controller override would have to be routed ahead of every other extension that injects its own `CartController` (OneStepCheckout and similar), and would silently do nothing on any store where one of them wins that ordering.
+
+## Module layout
+
+Standard Magento 1 structure — class names map straight onto paths under `app/code/local/YSRTech/SimpleConfigurable/`:
+
+```
+Block/    Adminhtml/  Catalog/  Checkout/     rewritten blocks, grouped by the core module they replace
+Model/    Catalog/  CatalogIndex/  CatalogInventory/  CatalogRule/   rewritten models, same grouping
+          Observer.php                        frontend observers
+Helper/   Data.php                            config accessors
+controllers/  AjaxController.php              the `scp` AJAX endpoints
+etc/      config.xml  system.xml  adminhtml.xml
+```
+
+Config groups are declared as `ysrtech_simpleconfigurable` (`Mage::helper('ysrtech_simpleconfigurable')`, `Mage::getModel('ysrtech_simpleconfigurable/observer')`).
+
+## Theming
+
+The live-update helpers in `product_extension.js` find the page regions they rewrite through `Product.Config.prototype.scpTargets`, a per-region list of selectors tried in order. Defaults cover the core `base/default` markup plus a few widely-reused variants. If your theme names a region differently, repoint it from your own skin JS instead of forking the file:
+
+```js
+Product.Config.prototype.scpTargets.productName = ['#my-theme-title'];
+```
+
+A region your theme does not have resolves to an empty list, and the corresponding helper no-ops rather than throwing.
+
+**The product-page features need the standard options blocks.** They hook `Product.Config`, which is constructed by `catalog/product/view/type/options/configurable.phtml` — rendered through `product.info.options.wrapper` via `container1`/`container2` in `catalog/product/view.phtml`. A theme whose `view.phtml` builds its own configurable UI and never outputs those containers will load this module's JS but have nothing for it to attach to, and `#SCPcustomOptionsDiv` will not exist. The PHP-side behaviour (pricing, indexing, catalog rules, cart display, cart-line editing, the admin grid) is unaffected by theming.
 
 ## License
 
-Proprietary — © Ysrtech. All rights reserved unless stated otherwise by the repository owner.
+Proprietary — © YSRTech. All rights reserved unless stated otherwise by the repository owner.

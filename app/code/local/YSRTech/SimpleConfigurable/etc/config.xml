@@ -1,0 +1,162 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <YSRTech_SimpleConfigurable>
+            <version>1.0.0</version>
+        </YSRTech_SimpleConfigurable>
+    </modules>
+
+    <global>
+        <helpers>
+            <ysrtech_simpleconfigurable>
+                <class>YSRTech_SimpleConfigurable_Helper</class>
+            </ysrtech_simpleconfigurable>
+        </helpers>
+
+        <models>
+            <ysrtech_simpleconfigurable>
+                <class>YSRTech_SimpleConfigurable_Model</class>
+            </ysrtech_simpleconfigurable>
+
+            <!-- Rewrite product type/price models on the modern (non-deprecated) "catalog" group -->
+            <catalog>
+                <rewrite>
+                    <product>YSRTech_SimpleConfigurable_Model_Catalog_Product</product>
+                    <product_type_simple>YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Simple</product_type_simple>
+                    <product_type_virtual>YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Virtual</product_type_virtual>
+                    <product_type_configurable>YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable</product_type_configurable>
+                    <product_type_configurable_price>YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price</product_type_configurable_price>
+                </rewrite>
+            </catalog>
+
+            <!-- Rewrite resource models on the modern (non-deprecated) "catalog_resource" group -->
+            <catalog_resource>
+                <rewrite>
+                    <product_collection>YSRTech_SimpleConfigurable_Model_Catalog_Resource_Product_Collection</product_collection>
+                    <product_indexer_price>YSRTech_SimpleConfigurable_Model_Catalog_Resource_Product_Indexer_Price</product_indexer_price>
+                    <product_indexer_price_configurable>YSRTech_SimpleConfigurable_Model_Catalog_Resource_Product_Indexer_Price_Configurable</product_indexer_price_configurable>
+                </rewrite>
+            </catalog_resource>
+
+            <catalogindex>
+                <rewrite>
+                    <data_configurable>YSRTech_SimpleConfigurable_Model_CatalogIndex_Data_Configurable</data_configurable>
+                </rewrite>
+            </catalogindex>
+
+            <!-- Rewrite on the modern (non-deprecated) "cataloginventory_resource" group -->
+            <cataloginventory_resource>
+                <rewrite>
+                    <indexer_stock_configurable>YSRTech_SimpleConfigurable_Model_CatalogInventory_Resource_Indexer_Stock_Configurable</indexer_stock_configurable>
+                </rewrite>
+            </cataloginventory_resource>
+
+            <!-- Rewrite on the modern (non-deprecated) "catalogrule_resource" group -->
+            <catalogrule_resource>
+                <rewrite>
+                    <rule>YSRTech_SimpleConfigurable_Model_CatalogRule_Resource_Rule</rule>
+                </rewrite>
+            </catalogrule_resource>
+        </models>
+
+        <blocks>
+            <ysrtech_simpleconfigurable>
+                <class>YSRTech_SimpleConfigurable_Block</class>
+            </ysrtech_simpleconfigurable>
+
+            <adminhtml>
+                <rewrite>
+                    <catalog_product_edit_tab_super_config_grid>YSRTech_SimpleConfigurable_Block_Adminhtml_Catalog_Product_Edit_Tab_Super_Config_Grid</catalog_product_edit_tab_super_config_grid>
+                </rewrite>
+            </adminhtml>
+            <catalog>
+                <rewrite>
+                    <product_view_type_configurable>YSRTech_SimpleConfigurable_Block_Catalog_Product_View_Type_Configurable</product_view_type_configurable>
+                    <product_price>YSRTech_SimpleConfigurable_Block_Catalog_Product_Price</product_price>
+                    <product_view_media>YSRTech_SimpleConfigurable_Block_Catalog_Product_View_Media</product_view_media>
+                    <product_view_attributes>YSRTech_SimpleConfigurable_Block_Catalog_Product_View_Attributes</product_view_attributes>
+                </rewrite>
+            </catalog>
+            <checkout>
+                <rewrite>
+                    <cart_item_renderer>YSRTech_SimpleConfigurable_Block_Checkout_Cart_Item_Renderer</cart_item_renderer>
+                </rewrite>
+            </checkout>
+            <!--
+                No Rss block rewrites are needed: Mage_Rss_Block_Wishlist, Catalog_Category,
+                Catalog_New and Catalog_Tag all render their price HTML via
+                Mage_Rss_Block_Catalog_Abstract::getPriceHtml(), which in turn uses the
+                catalog/product_price block rewritten above - so the "Price From:" label
+                is already applied to those feeds automatically. Mage_Rss_Block_Catalog_Special
+                hand-renders its own price HTML from an is-active-special-price-only collection
+                that does not apply to configurable parents (which don't carry their own
+                special_price), so there is nothing meaningful to rewrite there.
+            -->
+        </blocks>
+    </global>
+
+    <frontend>
+        <routers>
+            <ysrtech_simpleconfigurable>
+                <use>standard</use>
+                <args>
+                    <module>YSRTech_SimpleConfigurable</module>
+                    <frontName>scp</frontName>
+                </args>
+            </ysrtech_simpleconfigurable>
+        </routers>
+        <layout>
+            <updates>
+                <ysrtech_simpleconfigurable>
+                    <file>simpleconfigurable.xml</file>
+                </ysrtech_simpleconfigurable>
+            </updates>
+        </layout>
+
+        <events>
+            <!--
+                Editing a cart line that holds one of our child simple products should re-open
+                the parent configurable, not the (normally invisible) child.
+
+                preDispatch() names this event after the ROUTE rather than the controller class,
+                so observing it works no matter which module ends up owning checkout/cart. A
+                CartController override would instead have to be routed ahead of every other
+                module that injects one (OneStepCheckout and friends), and would silently do
+                nothing on any store where one of them wins that ordering.
+            -->
+            <controller_action_predispatch_checkout_cart_configure>
+                <observers>
+                    <ysrtech_simpleconfigurable>
+                        <type>singleton</type>
+                        <class>ysrtech_simpleconfigurable/observer</class>
+                        <method>configureCartItemWithParent</method>
+                    </ysrtech_simpleconfigurable>
+                </observers>
+            </controller_action_predispatch_checkout_cart_configure>
+        </events>
+    </frontend>
+
+    <default>
+        <simpleconfigurable>
+            <general>
+                <enabled>1</enabled>
+            </general>
+            <cart>
+                <show_config_product_options>1</show_config_product_options>
+                <show_custom_options>1</show_custom_options>
+                <show_configurable_product_name>0</show_configurable_product_name>
+                <show_configurable_product_image>0</show_configurable_product_image>
+            </cart>
+            <product_page>
+                <change_name>1</change_name>
+                <change_description>1</change_description>
+                <change_short_description>1</change_short_description>
+                <change_attributes>1</change_attributes>
+                <change_image>1</change_image>
+                <change_image_fancy>0</change_image_fancy>
+                <show_price_ranges_in_options>0</show_price_ranges_in_options>
+                <set_price_is_lowest_price>1</set_price_is_lowest_price>
+            </product_page>
+        </simpleconfigurable>
+    </default>
+</config>

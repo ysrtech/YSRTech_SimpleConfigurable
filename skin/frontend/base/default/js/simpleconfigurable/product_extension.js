@@ -201,6 +201,43 @@ Product.Config.prototype.reloadPrice = function() {
 };
 
 
+/**
+ * Selectors the live-update helpers below use to find the page regions they rewrite.
+ *
+ * The upstream module hard-coded the core base/default markup, which means a theme that
+ * names those regions differently gets a silent no-op instead of a live update. Each entry
+ * is a list tried in order, so a theme only has to append its own selector - or replace the
+ * map wholesale from its own skin JS - rather than fork this file:
+ *
+ *     Product.Config.prototype.scpTargets.productName = ['#my-theme-title'];
+ *
+ * Defaults cover core base/default plus the few widely-reused variants (`#mainimage`,
+ * `div.product-shop div.description`, `div.add-info`). A region a theme simply does not have
+ * resolves to an empty list and the corresponding helper no-ops rather than throwing.
+ */
+Product.Config.prototype.scpTargets = {
+    mainImage:        ['#image', '#mainimage', '#product_addtocart_form p.product-image img'],
+    productName:      ['#product_addtocart_form div.product-name h1'],
+    shortDescription: ['#product_addtocart_form div.short-description div.std'],
+    description:      ['div.box-description div.std', 'div.product-shop div.description'],
+    productAttributes: ['div.product-collateral div.box-additional', 'div.product-collateral div.add-info']
+};
+
+/**
+ * Returns the elements matched by the first selector in scpTargets[name] that matches
+ * anything, as a plain array. Empty array when the theme has no such region.
+ */
+Product.Config.prototype.scpFind = function(name) {
+    var selectors = this.scpTargets[name] || [];
+    for (var i = 0; i < selectors.length; i++) {
+        var found = $$(selectors[i]);
+        if (found.length) {
+            return found;
+        }
+    }
+    return [];
+};
+
 Product.Config.prototype.updateProductImage = function(productId) {
     var imageUrl = this.config.imageUrl;
     if (productId && this.config.childProducts[productId].imageUrl) {
@@ -211,16 +248,16 @@ Product.Config.prototype.updateProductImage = function(productId) {
         return;
     }
 
-    if ($('image')) {
-        $('image').src = imageUrl;
-    } else {
-        $$('#product_addtocart_form p.product-image img').each(function(el) {
-            var dims = el.getDimensions();
-            el.src = imageUrl;
+    this.scpFind('mainImage').each(function(el) {
+        var dims = el.getDimensions();
+        el.src = imageUrl;
+        // Keep the rendered box the same size so swapping the src does not reflow the page.
+        // Only meaningful when the theme sized the img itself; a CSS-sized image ignores it.
+        if (dims.width && dims.height) {
             el.width = dims.width;
             el.height = dims.height;
-        });
-    }
+        }
+    });
 };
 
 Product.Config.prototype.updateProductName = function(productId) {
@@ -228,7 +265,7 @@ Product.Config.prototype.updateProductName = function(productId) {
     if (productId && this.config.childProducts[productId].productName) {
         productName = this.config.childProducts[productId].productName;
     }
-    $$('#product_addtocart_form div.product-name h1').each(function(el) {
+    this.scpFind('productName').each(function(el) {
         el.innerHTML = productName;
     });
 };
@@ -238,7 +275,7 @@ Product.Config.prototype.updateProductShortDescription = function(productId) {
     if (productId && this.config.childProducts[productId].shortDescription) {
         shortDescription = this.config.childProducts[productId].shortDescription;
     }
-    $$('#product_addtocart_form div.short-description div.std').each(function(el) {
+    this.scpFind('shortDescription').each(function(el) {
         el.innerHTML = shortDescription;
     });
 };
@@ -248,7 +285,7 @@ Product.Config.prototype.updateProductDescription = function(productId) {
     if (productId && this.config.childProducts[productId].description) {
         description = this.config.childProducts[productId].description;
     }
-    $$('div.box-description div.std').each(function(el) {
+    this.scpFind('description').each(function(el) {
         el.innerHTML = description;
     });
 };
@@ -261,7 +298,7 @@ Product.Config.prototype.updateProductAttributes = function(productId) {
     //If config product doesn't already have an additional information section,
     //it won't be shown for associated product either. It's too hard to work out
     //where to place it given that different themes use very different html here
-    $$('div.product-collateral div.box-additional').each(function(el) {
+    this.scpFind('productAttributes').each(function(el) {
         el.innerHTML = productAttributes;
         decorateTable('product-attribute-specs-table');
     });

@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <YSRTech_SimpleConfigurable>
+            <active>true</active>
+            <codePool>local</codePool>
+            <depends>
+                <Mage_Catalog />
+                <Mage_CatalogIndex />
+                <Mage_CatalogInventory />
+                <Mage_CatalogRule />
+                <Mage_Checkout />
+            </depends>
+        </YSRTech_SimpleConfigurable>
+    </modules>
+</config>
