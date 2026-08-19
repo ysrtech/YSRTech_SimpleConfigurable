@@ -1,15 +1,9 @@
 <?xml version="1.0"?>
 <config>
-    <tabs>
-        <simpleconfigurable translate="label" module="ysrtech_simpleconfigurable">
-            <label>Simple Configurable</label>
-            <sort_order>200</sort_order>
-        </simpleconfigurable>
-    </tabs>
     <sections>
         <simpleconfigurable translate="label" module="ysrtech_simpleconfigurable">
             <label>Simple Configurable Config</label>
-            <tab>simpleconfigurable</tab>
+            <tab>catalog</tab>
             <frontend_type>text</frontend_type>
             <sort_order>10</sort_order>
             <show_in_default>1</show_in_default>

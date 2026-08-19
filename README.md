@@ -37,11 +37,11 @@ This module depends on the following core modules:
    - Catalog Search Index
    - Product Price
    - Stock Status
-4. Go to **System > Configuration > Simple Configurable** to review the module settings.
+4. Go to **System > Configuration > Catalog > Simple Configurable Config** to review the module settings.
 
 ## Configuration
 
-The module adds a **Simple Configurable** section under **System > Configuration** with the following groups:
+The module adds a **Simple Configurable Config** section under **System > Configuration > Catalog** with the following groups:
 
 ### General
 - **Enabled** — master switch to enable/disable the module per store view.
