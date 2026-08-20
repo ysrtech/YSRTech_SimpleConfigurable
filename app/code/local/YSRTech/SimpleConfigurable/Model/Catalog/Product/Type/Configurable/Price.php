@@ -15,6 +15,19 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price e
     protected static $_childProductsCache = [];
 
     /**
+     * Product ids whose price is currently being resolved, used to break link cycles.
+     *
+     * Pricing here is delegated to the associated products, so getPrice()/getFinalPrice() ask each
+     * child for its own price. If the link graph ever leads back to a product already being priced
+     * - most simply a row in catalog_product_super_link where parent_id = product_id - that walk
+     * never terminates and the request dies on memory. Core never hits this because it prices a
+     * configurable from its own price attribute and never consults the children.
+     *
+     * @var array<int, bool>
+     */
+    protected static $_pricingInProgress = [];
+
+    /**
      * @param Mage_Catalog_Model_Product $product
      * @return float
      */
@@ -33,12 +46,22 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price e
             return $product->getData('max_price');
         }
 
-        $child = $this->getChildProductWithHighestPrice($product, 'finalPrice', true);
-        if (!$child) {
-            $child = $this->getChildProductWithHighestPrice($product, 'finalPrice', false);
+        $productId = (int) $product->getId();
+        if (isset(self::$_pricingInProgress[$productId])) {
+            return $this->getPrice($product);
         }
+        self::$_pricingInProgress[$productId] = true;
 
-        return $child ? $child->getFinalPrice() : $this->getPrice($product);
+        try {
+            $child = $this->getChildProductWithHighestPrice($product, 'finalPrice', true);
+            if (!$child) {
+                $child = $this->getChildProductWithHighestPrice($product, 'finalPrice', false);
+            }
+
+            return $child ? $child->getFinalPrice() : $this->getPrice($product);
+        } finally {
+            unset(self::$_pricingInProgress[$productId]);
+        }
     }
 
     /**
@@ -56,12 +79,23 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price e
             return parent::getFinalPrice($qty, $product);
         }
 
-        $child = $this->getChildProductWithLowestPrice($product, 'finalPrice', true);
-        if (!$child) {
-            $child = $this->getChildProductWithLowestPrice($product, 'finalPrice', false);
+        $productId = (int) $product->getId();
+        if (isset(self::$_pricingInProgress[$productId])) {
+            return parent::getFinalPrice($qty, $product);
+        }
+        self::$_pricingInProgress[$productId] = true;
+
+        try {
+            $child = $this->getChildProductWithLowestPrice($product, 'finalPrice', true);
+            if (!$child) {
+                $child = $this->getChildProductWithLowestPrice($product, 'finalPrice', false);
+            }
+
+            $finalPrice = $child ? $child->getFinalPrice() : $this->getPrice($product);
+        } finally {
+            unset(self::$_pricingInProgress[$productId]);
         }
 
-        $finalPrice = $child ? $child->getFinalPrice() : $this->getPrice($product);
         $product->setFinalPrice($finalPrice);
 
         return $finalPrice;
@@ -82,12 +116,22 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price e
             return $product->getData('indexed_price');
         }
 
-        $child = $this->getChildProductWithLowestPrice($product, 'price', true);
-        if (!$child) {
-            $child = $this->getChildProductWithLowestPrice($product, 'price', false);
+        $productId = (int) $product->getId();
+        if (isset(self::$_pricingInProgress[$productId])) {
+            return parent::getPrice($product);
         }
+        self::$_pricingInProgress[$productId] = true;
 
-        return $child ? $child->getPrice() : parent::getPrice($product);
+        try {
+            $child = $this->getChildProductWithLowestPrice($product, 'price', true);
+            if (!$child) {
+                $child = $this->getChildProductWithLowestPrice($product, 'price', false);
+            }
+
+            return $child ? $child->getPrice() : parent::getPrice($product);
+        } finally {
+            unset(self::$_pricingInProgress[$productId]);
+        }
     }
 
     /**
@@ -130,6 +174,11 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price e
 
         $children = [];
         foreach ($collection as $child) {
+            // A configurable is never its own associated product. Such rows do occur in real
+            // catalogues, and including one makes the price walk below recurse into itself.
+            if ((int) $child->getId() === (int) $product->getId()) {
+                continue;
+            }
             if ($checkSalable && !$child->isSaleable()) {
                 continue;
             }
