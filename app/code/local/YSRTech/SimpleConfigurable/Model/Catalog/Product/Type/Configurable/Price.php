@@ -28,6 +28,29 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price e
     protected static $_pricingInProgress = [];
 
     /**
+     * The associated product a shopper has actually chosen, if there is one.
+     *
+     * Magento records it against the configurable as the "simple_product" custom option while
+     * building a quote item, so this is what distinguishes a cart line - where the price is a
+     * settled fact - from a product page, where nothing is chosen yet and a range or the cheapest
+     * price is the honest answer.
+     *
+     * @param Mage_Catalog_Model_Product $product
+     * @return Mage_Catalog_Model_Product|null
+     */
+    protected function _getChosenProduct($product)
+    {
+        $option = $product->getCustomOption('simple_product');
+        if (!$option || !$option->getProduct()) {
+            return null;
+        }
+
+        $chosen = $option->getProduct();
+
+        return $chosen->getId() == $product->getId() ? null : $chosen;
+    }
+
+    /**
      * @param Mage_Catalog_Model_Product $product
      * @return float
      */
@@ -72,27 +95,27 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price e
     public function getFinalPrice($qty, $product)
     {
         $storeId = $product->getStoreId();
-        if (
-            !Mage::helper('ysrtech_simpleconfigurable')->isModuleActiveOnStore($storeId)
-            || !Mage::getStoreConfigFlag('simpleconfigurable/product_page/set_price_is_lowest_price', $storeId)
-        ) {
+        if (!Mage::helper('ysrtech_simpleconfigurable')->isModuleActiveOnStore($storeId)) {
             return parent::getFinalPrice($qty, $product);
         }
 
-        // Once a shopper has actually chosen their options, the price is the chosen product's -
-        // not the cheapest, and not the configurable's own price plus attribute deltas, which is
-        // what core would charge. This is what keeps the cart, order and invoice honest when the
-        // configurable itself is what gets added: Magento records the parent SKU, and the money
-        // still comes from the associated product behind it.
-        $selected = $product->getCustomOption('simple_product');
-        if ($selected && $selected->getProduct() && $selected->getProduct()->getId() != $product->getId()) {
-            $child = $selected->getProduct();
+        // A chosen product settles the price, so this is checked before anything else. It is
+        // deliberately not behind set_price_is_lowest_price: that setting governs which figure the
+        // product page shows before a choice is made, and has no bearing on what a chosen item
+        // costs. Gating this on it charged the configurable's own price in the cart whenever the
+        // setting was off - the parent SKU with the wrong money against it.
+        $chosen = $this->_getChosenProduct($product);
+        if ($chosen) {
             // Custom options belong to the configurable, so they are applied on top of the
-            // child's price, the same way core layers them onto a base price.
-            $childPrice = $this->_applyOptionsPrice($product, $qty, $child->getFinalPrice($qty));
-            $product->setFinalPrice($childPrice);
+            // chosen product's price, the same way core layers them onto a base price.
+            $chosenPrice = $this->_applyOptionsPrice($product, $qty, $chosen->getFinalPrice($qty));
+            $product->setFinalPrice($chosenPrice);
 
-            return $childPrice;
+            return $chosenPrice;
+        }
+
+        if (!Mage::getStoreConfigFlag('simpleconfigurable/product_page/set_price_is_lowest_price', $storeId)) {
+            return parent::getFinalPrice($qty, $product);
         }
 
         $productId = (int) $product->getId();
@@ -126,6 +149,11 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price e
         $storeId = $product->getStoreId();
         if (!Mage::helper('ysrtech_simpleconfigurable')->isModuleActiveOnStore($storeId)) {
             return parent::getPrice($product);
+        }
+
+        $chosen = $this->_getChosenProduct($product);
+        if ($chosen) {
+            return $chosen->getPrice();
         }
 
         if ($product->getData('indexed_price') !== null) {

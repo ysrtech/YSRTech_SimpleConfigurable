@@ -65,7 +65,7 @@ The module adds a **Simple Configurable Config** section under **System > Config
 - **Change Image** — dynamically update the main product image.
 - **Change Image (Fancy/Gallery)** — update the full image gallery via AJAX (requires *Change Image*).
 - **Show Price Ranges in Options** — display the min-max price range next to each attribute option.
-- **Set Price Is Lowest Price** — display the configurable product's price as the cheapest available child's price.
+- **Set Price Is Lowest Price** — display the configurable product's price as the cheapest available child's price. Display only: once a shopper has chosen their options the price is the chosen product's, whatever this is set to.
 
 ## How It Works
 
