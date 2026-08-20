@@ -34,14 +34,41 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product extends Mage_Catalog_Mode
     }
 
     /**
+     * True once a specific child has been chosen for this configurable - on a
+     * quote item, an order item, or a product prepared for the cart.
+     *
+     * @return bool
+     */
+    protected function _hasChosenChild()
+    {
+        $option = $this->getCustomOption('simple_product');
+        if (!$option || !is_object($option->getProduct())) {
+            return false;
+        }
+
+        return $option->getProduct()->getId() != $this->getId();
+    }
+
+    /**
      * @param null|float $qty
      * @return float
      */
     public function getFinalPrice($qty = null)
     {
         $storeId = $this->getStoreId();
+
+        /**
+         * min_price/final_price are the "cheapest child" figures a listing or a
+         * price-indexed collection puts on the product so the catalogue can show
+         * a from-price without loading every child. They describe the whole
+         * configurable, so they must never stand in for the price of a child the
+         * shopper actually picked - otherwise a cart line is charged the lowest
+         * child's price (or the parent's own catalogue-rule price) instead of the
+         * chosen one's.
+         */
         if (
-            Mage::helper('ysrtech_simpleconfigurable')->isModuleActiveOnStore($storeId)
+            !$this->_hasChosenChild()
+            && Mage::helper('ysrtech_simpleconfigurable')->isModuleActiveOnStore($storeId)
             && Mage::getStoreConfigFlag('simpleconfigurable/product_page/set_price_is_lowest_price', $storeId)
         ) {
             $price = $this->getData('min_price');
