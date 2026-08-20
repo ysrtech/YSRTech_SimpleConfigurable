@@ -152,6 +152,8 @@
                 <enabled>1</enabled>
             </general>
             <cart>
+                <!-- Off by default: adding the child is this module's original behaviour. -->
+                <add_configurable_parent>0</add_configurable_parent>
                 <show_config_product_options>1</show_config_product_options>
                 <show_custom_options>1</show_custom_options>
                 <show_configurable_product_name>0</show_configurable_product_name>

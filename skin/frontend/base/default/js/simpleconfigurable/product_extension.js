@@ -169,8 +169,14 @@ Product.Config.prototype.reloadPrice = function() {
         this.updateProductDescription(childProductId);
         this.updateProductName(childProductId);
         this.updateProductAttributes(childProductId);
-        this.updateFormProductId(childProductId);
-        this.addParentProductIdToCartForm(this.config.productId);
+        // With addParentToCart the form is left untouched, which is what makes the add behave
+        // like stock OpenMage: the configurable's own id and the selected super_attribute values
+        // are posted, and the cart line carries the parent SKU with its chosen options. Swapping
+        // in the child id and a cpid marker is the module's original behaviour.
+        if (!this.config.addParentToCart) {
+            this.updateFormProductId(childProductId);
+            this.addParentProductIdToCartForm(this.config.productId);
+        }
         this.showCustomOptionsBlock(childProductId, this.config.productId);
         if (usingZoomer) {
             this.showFullImageDiv(childProductId, this.config.productId);
@@ -187,6 +193,8 @@ Product.Config.prototype.reloadPrice = function() {
         optionsPrice.reload();
         optionsPrice.reloadPriceLabels(false);
         optionsPrice.updateSpecialPriceDisplay(price, finalPrice);
+        // After reload(), which has just replaced the range with the cheapest child's price.
+        optionsPrice.restorePriceRange();
         this.updateProductShortDescription(false);
         this.updateProductDescription(false);
         this.updateProductName(false);
@@ -244,6 +252,13 @@ Product.Config.prototype.updateProductImage = function(productId) {
         imageUrl = this.config.childProducts[productId].imageUrl;
     }
 
+    // Undefined means the corresponding "dynamically update" setting is off, so neither the
+    // child nor the parent value was put in the config. Leave the page exactly as the server
+    // rendered it rather than writing the string "undefined" into it.
+    if (typeof imageUrl == 'undefined' || imageUrl === null) {
+        return;
+    }
+
     if (!imageUrl) {
         return;
     }
@@ -265,6 +280,13 @@ Product.Config.prototype.updateProductName = function(productId) {
     if (productId && this.config.childProducts[productId].productName) {
         productName = this.config.childProducts[productId].productName;
     }
+
+    // Undefined means the corresponding "dynamically update" setting is off, so neither the
+    // child nor the parent value was put in the config. Leave the page exactly as the server
+    // rendered it rather than writing the string "undefined" into it.
+    if (typeof productName == 'undefined' || productName === null) {
+        return;
+    }
     this.scpFind('productName').each(function(el) {
         el.innerHTML = productName;
     });
@@ -274,6 +296,13 @@ Product.Config.prototype.updateProductShortDescription = function(productId) {
     var shortDescription = this.config.shortDescription;
     if (productId && this.config.childProducts[productId].shortDescription) {
         shortDescription = this.config.childProducts[productId].shortDescription;
+    }
+
+    // Undefined means the corresponding "dynamically update" setting is off, so neither the
+    // child nor the parent value was put in the config. Leave the page exactly as the server
+    // rendered it rather than writing the string "undefined" into it.
+    if (typeof shortDescription == 'undefined' || shortDescription === null) {
+        return;
     }
     this.scpFind('shortDescription').each(function(el) {
         el.innerHTML = shortDescription;
@@ -285,6 +314,13 @@ Product.Config.prototype.updateProductDescription = function(productId) {
     if (productId && this.config.childProducts[productId].description) {
         description = this.config.childProducts[productId].description;
     }
+
+    // Undefined means the corresponding "dynamically update" setting is off, so neither the
+    // child nor the parent value was put in the config. Leave the page exactly as the server
+    // rendered it rather than writing the string "undefined" into it.
+    if (typeof description == 'undefined' || description === null) {
+        return;
+    }
     this.scpFind('description').each(function(el) {
         el.innerHTML = description;
     });
@@ -294,6 +330,13 @@ Product.Config.prototype.updateProductAttributes = function(productId) {
     var productAttributes = this.config.productAttributes;
     if (productId && this.config.childProducts[productId].productAttributes) {
         productAttributes = this.config.childProducts[productId].productAttributes;
+    }
+
+    // Undefined means the corresponding "dynamically update" setting is off, so neither the
+    // child nor the parent value was put in the config. Leave the page exactly as the server
+    // rendered it rather than writing the string "undefined" into it.
+    if (typeof productAttributes == 'undefined' || productAttributes === null) {
+        return;
     }
     //If config product doesn't already have an additional information section,
     //it won't be shown for associated product either. It's too hard to work out
@@ -370,6 +413,41 @@ Product.Config.prototype.showFullImageDiv = function(productId, parentId) {
     }
 };
 
+
+/**
+ * Puts the min-max spans back into the price box.
+ *
+ * The server renders the range, but optionsPrice.reload() overwrites those elements with a
+ * single figure. That is what should happen once a shopper has picked a full set of options -
+ * the price is then known exactly - but when the selection is incomplete or cleared, the range
+ * is the honest answer, so it is written back.
+ */
+Product.OptionsPrice.prototype.restorePriceRange = function() {
+    if (typeof spConfig == 'undefined') {
+        return;
+    }
+
+    var ranges = [
+        { id: 'product-price-' + this.productId, text: spConfig.config.priceRange },
+        { id: 'old-price-' + this.productId,     text: spConfig.config.oldPriceRange }
+    ];
+
+    ranges.each(function(range) {
+        if (!range.text) {
+            return;
+        }
+        [range.id, range.id + this.duplicateIdSuffix].each(function(id) {
+            var el = $(id);
+            if (!el) {
+                return;
+            }
+            // The id sits either on the money element itself or on a wrapper around it,
+            // depending on whether a special price is in play.
+            var target = el.hasClassName('price') ? el : (el.select('span.price')[0] || el);
+            target.innerHTML = range.text;
+        });
+    }.bind(this));
+};
 
 Product.OptionsPrice.prototype.reloadPriceLabels = function(productPriceIsKnown) {
     var priceFromLabel = '';

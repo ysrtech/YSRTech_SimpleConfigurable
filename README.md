@@ -6,7 +6,7 @@ An OpenMage / Magento 1 module that simplifies the configurable product buying e
 
 - **AJAX option selection** — configurable product options can be selected and added to cart without a full page navigation to the product view page.
 - **Dynamic product details** — name, description, short description, additional attributes and main image update live as options are selected.
-- **Dynamic pricing** — displays a "Price From:" range for configurable products and swaps in the exact price of the selected/cheapest matching child product.
+- **Price ranges** — a configurable shows the span across its associated products ("$107.00 - $130.00") for the regular price and, where a special price or catalog price rule applies, for the sale price too. Once a selection narrows to a single child the exact price replaces the range; clearing the selection brings it back.
 - **Stock-aware pricing** — price calculation is delegated to the cheapest **in-stock** associated simple product.
 - **Custom options support** — child products' own custom options are loaded via AJAX once all configurable attributes are selected.
 - **Optional full image gallery swap** — update the entire product gallery (not just the main image) when a child is selected.
@@ -54,6 +54,7 @@ The module adds a **Simple Configurable Config** section under **System > Config
 - **Enabled** — master switch to enable/disable the module per store view.
 
 ### Cart
+- **Add Configurable Product To Cart Instead Of Child** — Yes uses the standard OpenMage behaviour: the configurable is added with its chosen options, so the cart, order and invoice carry the parent SKU. No adds the matching child on its own, which is this module's original behaviour and the default. Child products' own custom options only apply when this is No.
 - **Show Configurable Product Options** — show the selected attribute values as options in the cart.
 - **Show Custom Options** — show the child product's custom options in the cart.
 - **Show Configurable Product Name** — display the parent configurable product's name instead of the child's.

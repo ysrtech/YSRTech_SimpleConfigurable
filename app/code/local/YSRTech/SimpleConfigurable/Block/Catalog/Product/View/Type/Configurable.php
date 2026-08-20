@@ -96,6 +96,20 @@ class YSRTech_SimpleConfigurable_Block_Catalog_Product_View_Type_Configurable ex
             $config['imageUrl'] = (string) Mage::helper('catalog/image')->init($parent, 'image');
         }
 
+        // Display strings for the min-max spans, so the JS can put them back when a shopper
+        // clears their selection and the exact child price no longer applies.
+        $priceBlock = $this->getLayout()->createBlock('catalog/product_price');
+        if (is_callable([$priceBlock, 'getFormattedPriceRanges'])) {
+            $ranges = $priceBlock->getFormattedPriceRanges($parent);
+            $config['priceRange']    = $ranges['final'];
+            $config['oldPriceRange'] = $ranges['regular'];
+        }
+
+        // When set, add to cart is left exactly as core does it: the form keeps posting the
+        // configurable's own id together with the chosen super_attribute values, so Magento
+        // builds a configurable cart item carrying the parent SKU.
+        $config['addParentToCart'] = Mage::getStoreConfigFlag('simpleconfigurable/cart/add_configurable_parent', $storeId);
+
         $config['childProducts']          = $childProducts;
         $config['priceFromLabel']         = $this->__('Price From:');
         $config['ajaxBaseUrl']             = Mage::getUrl('scp/ajax/');
