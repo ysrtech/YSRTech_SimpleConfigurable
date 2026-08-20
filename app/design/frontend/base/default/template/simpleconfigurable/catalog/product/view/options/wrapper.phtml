@@ -14,8 +14,5 @@
     <?php echo $this->getChildHtml('', true, true);?>
     <span style="display:none;" class="scp-please-wait"><img src="<?php echo $this->getSkinUrl('images/simpleconfigurable/ajax-loader.gif') ?>" class="v-middle" alt="" /> &nbsp; <?php echo $this->__('Loading...') ?> &nbsp;</span>
     <div id="SCPcustomOptionsDiv"></div>
-    <?php if ($this->hasRequiredOptions()):?>
-        <p class="required"><?php echo $this->__('* Required Fields') ?></p>
-    <?php endif ?>
 </div>
 <script type="text/javascript">decorateGeneric($$('#product-options-wrapper dl'), ['last']);</script>

@@ -79,6 +79,22 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price e
             return parent::getFinalPrice($qty, $product);
         }
 
+        // Once a shopper has actually chosen their options, the price is the chosen product's -
+        // not the cheapest, and not the configurable's own price plus attribute deltas, which is
+        // what core would charge. This is what keeps the cart, order and invoice honest when the
+        // configurable itself is what gets added: Magento records the parent SKU, and the money
+        // still comes from the associated product behind it.
+        $selected = $product->getCustomOption('simple_product');
+        if ($selected && $selected->getProduct() && $selected->getProduct()->getId() != $product->getId()) {
+            $child = $selected->getProduct();
+            // Custom options belong to the configurable, so they are applied on top of the
+            // child's price, the same way core layers them onto a base price.
+            $childPrice = $this->_applyOptionsPrice($product, $qty, $child->getFinalPrice($qty));
+            $product->setFinalPrice($childPrice);
+
+            return $childPrice;
+        }
+
         $productId = (int) $product->getId();
         if (isset(self::$_pricingInProgress[$productId])) {
             return parent::getFinalPrice($qty, $product);

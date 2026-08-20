@@ -193,8 +193,10 @@ Product.Config.prototype.reloadPrice = function() {
         optionsPrice.reload();
         optionsPrice.reloadPriceLabels(false);
         optionsPrice.updateSpecialPriceDisplay(price, finalPrice);
-        // After reload(), which has just replaced the range with the cheapest child's price.
-        optionsPrice.restorePriceRange();
+        // After reload(), which has just replaced the price with the cheapest child's. Show the
+        // span across whatever is still reachable instead: with nothing chosen that is the full
+        // range, and each option picked narrows it.
+        optionsPrice.showPriceRange(this.getPriceRangeInScope());
         this.updateProductShortDescription(false);
         this.updateProductDescription(false);
         this.updateProductName(false);
@@ -413,6 +415,71 @@ Product.Config.prototype.showFullImageDiv = function(productId, parentId) {
     }
 };
 
+
+/**
+ * Lowest and highest price among the associated products still reachable from the current
+ * selection, as {regular: [min, max], final: [min, max]}.
+ *
+ * Picking one attribute of several rarely identifies a single product, but it does narrow the
+ * field - so the price should narrow with it rather than sit on the full range until the last
+ * option is chosen.
+ */
+Product.Config.prototype.getPriceRangeInScope = function() {
+    var childProducts = this.config.childProducts;
+    var ids = this.getInScopeProductIds();
+    var regular = [];
+    var final = [];
+
+    for (var i = 0; i < ids.length; i++) {
+        var child = childProducts[ids[i]];
+        if (!child) {
+            continue;
+        }
+        regular.push(Number(child.price));
+        final.push(Number(child.finalPrice));
+    }
+
+    if (!regular.length) {
+        return null;
+    }
+
+    return {
+        regular: [Math.min.apply(null, regular), Math.max.apply(null, regular)],
+        final:   [Math.min.apply(null, final),   Math.max.apply(null, final)]
+    };
+};
+
+/**
+ * Writes a price range into the price box, or a single figure when both ends match.
+ */
+Product.OptionsPrice.prototype.showPriceRange = function(range) {
+    if (!range) {
+        return;
+    }
+
+    var format = function(pair) {
+        var low = this.formatPrice(pair[0]);
+        return Math.abs(pair[1] - pair[0]) < 0.00001 ? low : low + ' - ' + this.formatPrice(pair[1]);
+    }.bind(this);
+
+    var targets = [
+        { id: 'product-price-' + this.productId, text: format(range.final) },
+        { id: 'old-price-' + this.productId,     text: format(range.regular) }
+    ];
+
+    targets.each(function(target) {
+        [target.id, target.id + this.duplicateIdSuffix].each(function(id) {
+            var el = $(id);
+            if (!el) {
+                return;
+            }
+            // The id sits either on the money element itself or on a wrapper around it,
+            // depending on whether a special price is in play.
+            var money = el.hasClassName('price') ? el : (el.select('span.price')[0] || el);
+            money.innerHTML = target.text;
+        });
+    }.bind(this));
+};
 
 /**
  * Puts the min-max spans back into the price box.

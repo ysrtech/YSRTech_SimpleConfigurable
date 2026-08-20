@@ -31,11 +31,24 @@ class YSRTech_SimpleConfigurable_Block_Catalog_Product_View_Type_Configurable ex
         $changeImageFancy       = Mage::getStoreConfigFlag('simpleconfigurable/product_page/change_image_fancy', $storeId);
         $showPriceRanges        = Mage::getStoreConfigFlag('simpleconfigurable/product_page/show_price_ranges_in_options', $storeId);
 
+        // getAllowProducts() comes from getUsedProductCollection(), which does not select
+        // special_price or its date range - so getFinalPrice() on those items silently returns the
+        // plain price and every child looks undiscounted to the JS. The price model loads the
+        // attributes it needs, so prices are taken from there and keyed by id.
+        $pricedChildren = [];
+        $priceModel = $this->getProduct()->getPriceModel();
+        if (is_callable([$priceModel, 'getChildProducts'])) {
+            foreach ($priceModel->getChildProducts($this->getProduct(), false) as $priced) {
+                $pricedChildren[$priced->getId()] = $priced;
+            }
+        }
+
         $childProducts = [];
         foreach ($this->getAllowProducts() as $product) {
+            $priced = isset($pricedChildren[$product->getId()]) ? $pricedChildren[$product->getId()] : $product;
             $data = [
-                'price'      => $this->_registerJsPrice($this->_convertPrice($product->getPrice())),
-                'finalPrice' => $this->_registerJsPrice($this->_convertPrice($product->getFinalPrice())),
+                'price'      => $this->_registerJsPrice($this->_convertPrice($priced->getPrice())),
+                'finalPrice' => $this->_registerJsPrice($this->_convertPrice($priced->getFinalPrice())),
             ];
 
             if ($changeName) {
