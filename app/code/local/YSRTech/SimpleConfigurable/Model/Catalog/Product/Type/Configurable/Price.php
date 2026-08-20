@@ -200,21 +200,55 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price e
     }
 
     /**
+     * Hand this model children that have already been loaded.
+     *
+     * A listing can load the children of every configurable on the page in one collection;
+     * priming them here means the price range, the swatches and anything else asking for
+     * children all share those objects, rather than each running its own query and pricing
+     * the same child over again.
+     *
+     * @param int $productId
+     * @param Mage_Catalog_Model_Product[] $children
+     * @return void
+     */
+    public static function primeChildProducts($productId, array $children)
+    {
+        self::$_childProductsCache[$productId . ':0'] = $children;
+    }
+
+    /**
      * @param Mage_Catalog_Model_Product $product
      * @param bool $checkSalable
      * @return Mage_Catalog_Model_Product[]
      */
     public function getChildProducts($product, $checkSalable = true)
     {
-        $cacheKey = $product->getId() . ':' . ($checkSalable ? '1' : '0');
+        $cacheKey = $product->getId() . ':0';
         if (isset(self::$_childProductsCache[$cacheKey])) {
-            return self::$_childProductsCache[$cacheKey];
+            return $checkSalable
+                ? array_values(array_filter(self::$_childProductsCache[$cacheKey], fn($child) => $child->isSaleable()))
+                : self::$_childProductsCache[$cacheKey];
         }
 
         /** @var Mage_Catalog_Model_Product_Type_Configurable $typeInstance */
         $typeInstance = $product->getTypeInstance(true);
+
+        /**
+         * The configurable's own attributes come along so one collection can serve both pricing
+         * and anything that needs to know which child sits at which option - a listing drawing a
+         * swatch per size would otherwise load every child twice, once here and once through
+         * getUsedProducts(), and pay for it on every tile.
+         */
+        $select = ['price', 'final_price', 'special_price', 'special_from_date', 'special_to_date'];
+        foreach ($typeInstance->getUsedProductAttributes($product) as $attribute) {
+            $select[] = $attribute->getAttributeCode();
+        }
+
         $collection = $typeInstance->getUsedProductCollection($product)
-            ->addAttributeToSelect(['price', 'final_price', 'special_price', 'special_from_date', 'special_to_date']);
+            ->addAttributeToSelect($select)
+            // Matches getUsedProducts(): a child missing a required option cannot be bought on
+            // its own, so it should neither set the price range nor appear as a choice.
+            ->addFilterByRequiredOptions();
 
         $children = [];
         foreach ($collection as $child) {
@@ -223,15 +257,20 @@ class YSRTech_SimpleConfigurable_Model_Catalog_Product_Type_Configurable_Price e
             if ((int) $child->getId() === (int) $product->getId()) {
                 continue;
             }
-            if ($checkSalable && !$child->isSaleable()) {
-                continue;
-            }
             $children[] = $child;
         }
 
+        /**
+         * Cached whole and filtered on the way out, never loaded twice. Callers want it both
+         * ways - the price range prefers what is in stock, the swatches need everything so a
+         * sold-out size can still be drawn - and loading each separately means two collections
+         * and, because a product caches its own computed price, pricing every child twice.
+         */
         self::$_childProductsCache[$cacheKey] = $children;
 
-        return $children;
+        return $checkSalable
+            ? array_values(array_filter($children, fn($child) => $child->isSaleable()))
+            : $children;
     }
 
     /**
